@@ -5,14 +5,12 @@ import requests
 from bs4 import BeautifulSoup
 
 # --- CLOUD SECRETS CONFIGURATION ---
-TELEGRAM_BOT_TOKEN = os.environ.get("8930651845:AAGTbfDQlHyYdit9sHFjQRMus5Zw1a3bQiM")
-TELEGRAM_CHAT_ID = os.environ.get("@Graduatejobbot")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 # Validate that secrets are loaded correctly
 if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-  print(
-      "Error: Telegram tokens are missing from environment variables!"
-  )
+  print("Error: Telegram tokens are missing from environment variables!")
   exit(1)
 
 # Target URL for Sarkari Result Latest Jobs
@@ -96,7 +94,6 @@ try:
     if active_matched_jobs:
       message = "🚨 *New Active Jobs For You* 🚨\n\n"
       for idx, (title, link, expiry) in enumerate(active_matched_jobs, 1):
-        # Fix relative links if needed
         if link.startswith("/"):
           link = "https://www.sarkariresult.com" + link
 
