@@ -5,8 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 
 # --- CLOUD SECRETS CONFIGURATION ---
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+TELEGRAM_BOT_TOKEN = os.environ.get("8930651845:AAGTbfDQlHyYdit9sHFjQRMus5Zw1a3bQiM")
+TELEGRAM_CHAT_ID = os.environ.get("@Graduatejobbot")
 
 # Validate that secrets are loaded correctly
 if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
