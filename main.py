@@ -1,11 +1,19 @@
 from datetime import datetime
+import os
 import re
 import requests
 from bs4 import BeautifulSoup
 
-# --- CONFIGURATION ---
-TELEGRAM_BOT_TOKEN = "8665128570:AAFUz8jxlQeezJZBm82tJ_bF4_MJotsYBxw"  # Replace with your token from BotFather
-TELEGRAM_CHAT_ID = "5215149949"  # Replace with your ID from @userinfobot
+# --- CLOUD SECRETS CONFIGURATION ---
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+
+# Validate that secrets are loaded correctly
+if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+  print(
+      "Error: Telegram tokens are missing from environment variables!"
+  )
+  exit(1)
 
 # Target URL for Sarkari Result Latest Jobs
 url = "https://www.sarkariresult.com/latestjob/"
@@ -41,10 +49,11 @@ target_keywords = [
     "law",
 ]
 
-print("Fetching active jobs...")
+print("Fetching active jobs from Sarkari Result...")
 
 try:
-  response = requests.get(url, headers=headers)
+  response = requests.get(url, headers=headers, timeout=15)
+  print(f"Website Response Status: {response.status_code}")
 
   if response.status_code == 200:
     soup = BeautifulSoup(response.text, "html.parser")
@@ -79,19 +88,23 @@ try:
           except ValueError:
             pass
 
+    print(f"Total matching active jobs found: {len(active_matched_jobs)}")
+
     # Limit to top 5 jobs
     active_matched_jobs = active_matched_jobs[:5]
 
     if active_matched_jobs:
-      # Format message using Markdown style for Telegram
       message = "🚨 *New Active Jobs For You* 🚨\n\n"
       for idx, (title, link, expiry) in enumerate(active_matched_jobs, 1):
+        # Fix relative links if needed
+        if link.startswith("/"):
+          link = "https://www.sarkariresult.com" + link
+
         message += (
             f"*{idx}. {title}*\n📅 Deadline: {expiry}\n🔗 [Apply Here]"
             f"({link})\n\n"
         )
 
-      # Send message via Telegram Bot API
       telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
       payload = {
           "chat_id": TELEGRAM_CHAT_ID,
@@ -100,17 +113,19 @@ try:
           "disable_web_page_preview": True,
       }
 
-      tg_response = requests.post(telegram_url, json=payload)
+      tg_response = requests.post(telegram_url, json=payload, timeout=10)
+      print(f"Telegram API Response Status: {tg_response.status_code}")
+
       if tg_response.status_code == 200:
         print("Telegram alert sent successfully to your phone!")
       else:
         print(f"Failed to send Telegram message: {tg_response.text}")
 
     else:
-      print("No active matching jobs found.")
+      print("No active matching jobs found right now.")
 
   else:
     print(f"Failed to load page. Status code: {response.status_code}")
 
 except Exception as e:
-    print(f"An error occurred: {e}")
+  print(f"An error occurred during execution: {e}")
