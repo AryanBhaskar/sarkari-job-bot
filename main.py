@@ -1,10 +1,11 @@
 from datetime import datetime
+import re
 import requests
 from bs4 import BeautifulSoup
 
-# --- DIRECT CONFIGURATION ---
-TELEGRAM_BOT_TOKEN = "8665128570:AAFUz8jxlQeezJZBm82tJ_bF4_MJotsYBxw"
-TELEGRAM_CHAT_ID = "5215149949"
+# --- CONFIGURATION ---
+TELEGRAM_BOT_TOKEN = "8665128570:AAFUz8jxlQeezJZBm82tJ_bF4_MJotsYBxw"  # Replace with your token from BotFather
+TELEGRAM_CHAT_ID = "5215149949"  # Replace with your ID from @userinfobot
 
 # Target URL for Sarkari Result Latest Jobs
 url = "https://www.sarkariresult.com/latestjob/"
@@ -43,65 +44,73 @@ target_keywords = [
 print("Fetching active jobs...")
 
 try:
-    response = requests.get(url, headers=headers)
-    print(f"Website Response Status: {response.status_code}")
+  response = requests.get(url, headers=headers)
 
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "html.parser")
-        
-        # Sarkari Result usually lists latest jobs inside specific divs or ul/li tags
-        links = soup.find_all("a")
-        active_matched_jobs = []
+  if response.status_code == 200:
+    soup = BeautifulSoup(response.text, "html.parser")
+    links = soup.find_all("a")
 
-        for link in links:
-            job_text = link.get_text(strip=True)
-            job_url = link.get("href", "")
+    active_matched_jobs = []
+    today = datetime.now()
 
-            if len(job_text) < 5:
-                continue
+    for link in links:
+      job_text = link.get_text(strip=True)
+      job_url = link.get("href", "")
 
-            job_text_lower = job_text.lower()
-            is_relevant = any(
-                keyword in job_text_lower for keyword in target_keywords
-            )
+      if len(job_text) < 5:
+        continue
 
-            if is_relevant:
-                # Avoid duplicate entries
-                if not any(job[0] == job_text for job in active_matched_jobs):
-                    if job_url:
-                        if job_url.startswith("/"):
-                            job_url = "https://www.sarkariresult.com" + job_url
-                        active_matched_jobs.append((job_text, job_url))
+      job_text_lower = job_text.lower()
+      is_relevant = any(
+          keyword in job_text_lower for keyword in target_keywords
+      )
 
-        # Limit to top 5 relevant jobs
-        active_matched_jobs = active_matched_jobs[:5]
-        print(f"Total matching jobs found: {len(active_matched_jobs)}")
+      if is_relevant:
+        date_match = re.search(
+            r"last\s*date\s*[:\-]?\s*(\d{2}/\d{2}/\d{4})", job_text_lower
+        )
+        if date_match:
+          date_str = date_match.group(1)
+          try:
+            expiry_date = datetime.strptime(date_str, "%d/%m/%Y")
+            if expiry_date >= today:
+              if not any(job[0] == job_text for job in active_matched_jobs):
+                active_matched_jobs.append((job_text, job_url, date_str))
+          except ValueError:
+            pass
 
-        if active_matched_jobs:
-            message = "🚨 *New Matching Jobs For You* 🚨\n\n"
-            for idx, (title, link) in enumerate(active_matched_jobs, 1):
-                message += f"*{idx}. {title}*\n🔗 [Apply Here]({link})\n\n"
+    # Limit to top 5 jobs
+    active_matched_jobs = active_matched_jobs[:5]
 
-            telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-            payload = {
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": message,
-                "parse_mode": "Markdown",
-                "disable_web_page_preview": True,
-                print(payload)
-            }
+    if active_matched_jobs:
+      # Format message using Markdown style for Telegram
+      message = "🚨 *New Active Jobs For You* 🚨\n\n"
+      for idx, (title, link, expiry) in enumerate(active_matched_jobs, 1):
+        message += (
+            f"*{idx}. {title}*\n📅 Deadline: {expiry}\n🔗 [Apply Here]"
+            f"({link})\n\n"
+        )
 
-            tg_response = requests.post(telegram_url, json=payload)
-            print(f"Telegram API Response Status: {tg_response.status_code}")
+      # Send message via Telegram Bot API
+      telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+      payload = {
+          "chat_id": TELEGRAM_CHAT_ID,
+          "text": message,
+          "parse_mode": "Markdown",
+          "disable_web_page_preview": True,
+      }
 
-            if tg_response.status_code == 200:
-                print("Telegram alert sent successfully to your phone!")
-            else:
-                print(f"Failed to send Telegram message: {tg_response.text}")
-        else:
-            print("No matching jobs found with current keywords.")
+      tg_response = requests.post(telegram_url, json=payload)
+      if tg_response.status_code == 200:
+        print("Telegram alert sent successfully to your phone!")
+      else:
+        print(f"Failed to send Telegram message: {tg_response.text}")
+
     else:
-        print(f"Failed to load page. Status code: {response.status_code}")
+      print("No active matching jobs found.")
+
+  else:
+    print(f"Failed to load page. Status code: {response.status_code}")
 
 except Exception as e:
     print(f"An error occurred: {e}")
