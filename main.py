@@ -1,5 +1,4 @@
 from datetime import datetime
-import re
 import requests
 from bs4 import BeautifulSoup
 
@@ -45,13 +44,14 @@ print("Fetching active jobs...")
 
 try:
     response = requests.get(url, headers=headers)
+    print(f"Website Response Status: {response.status_code}")
 
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
+        
+        # Sarkari Result usually lists latest jobs inside specific divs or ul/li tags
         links = soup.find_all("a")
-
         active_matched_jobs = []
-        today = datetime.now()
 
         for link in links:
             job_text = link.get_text(strip=True)
@@ -66,35 +66,22 @@ try:
             )
 
             if is_relevant:
-                date_match = re.search(
-                    r"last\s*date\s*[:\-]?\s*(\d{2}/\d{2}/\d{4})", job_text_lower
-                )
-                if date_match:
-                    date_str = date_match.group(1)
-                    try:
-                        expiry_date = datetime.strptime(date_str, "%d/%m/%Y")
-                        if expiry_date >= today:
-                            if not any(job[0] == job_text for job in active_matched_jobs):
-                                active_matched_jobs.append((job_text, job_url, date_str))
-                    except ValueError:
-                        pass
+                # Avoid duplicate entries
+                if not any(job[0] == job_text for job in active_matched_jobs):
+                    if job_url:
+                        if job_url.startswith("/"):
+                            job_url = "https://www.sarkariresult.com" + job_url
+                        active_matched_jobs.append((job_text, job_url))
 
-        # Limit to top 5 jobs
+        # Limit to top 5 relevant jobs
         active_matched_jobs = active_matched_jobs[:5]
+        print(f"Total matching jobs found: {len(active_matched_jobs)}")
 
         if active_matched_jobs:
-            # Format message using Markdown style for Telegram
-            message = "🚨 *New Active Jobs For You* 🚨\n\n"
-            for idx, (title, link, expiry) in enumerate(active_matched_jobs, 1):
-                if link.startswith("/"):
-                    link = "https://www.sarkariresult.com" + link
+            message = "🚨 *New Matching Jobs For You* 🚨\n\n"
+            for idx, (title, link) in enumerate(active_matched_jobs, 1):
+                message += f"*{idx}. {title}*\n🔗 [Apply Here]({link})\n\n"
 
-                message += (
-                    f"*{idx}. {title}*\n📅 Deadline: {expiry}\n🔗 [Apply Here]"
-                    f"({link})\n\n"
-                )
-
-            # Send message via Telegram Bot API
             telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
             payload = {
                 "chat_id": TELEGRAM_CHAT_ID,
@@ -104,14 +91,14 @@ try:
             }
 
             tg_response = requests.post(telegram_url, json=payload)
+            print(f"Telegram API Response Status: {tg_response.status_code}")
+
             if tg_response.status_code == 200:
                 print("Telegram alert sent successfully to your phone!")
             else:
                 print(f"Failed to send Telegram message: {tg_response.text}")
-
         else:
-            print("No active matching jobs found.")
-
+            print("No matching jobs found with current keywords.")
     else:
         print(f"Failed to load page. Status code: {response.status_code}")
 
