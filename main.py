@@ -5,16 +5,12 @@ from bs4 import BeautifulSoup
 TELEGRAM_BOT_TOKEN = "8665128570:AAFUz8jxlQeezJZBm82tJ_bF4_MJotsYBxw"
 TELEGRAM_CHAT_ID = "5215149949"
 
-# Target URL for Sarkari Result Latest Jobs
-url = "https://www.sarkariresult.com/latestjob/"
+# Using a free proxy/allorigins wrapper to bypass datacenter IP block (403 Forbidden)
+target_url = "https://www.sarkariresult.com/latestjob/"
+proxy_url = f"https://api.allorigins.win/get?url={target_url}"
 
-# Enhanced headers to bypass 403 blocking
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Referer": "https://www.sarkariresult.com/",
-    "Connection": "keep-alive",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
 # Your qualification keywords
@@ -42,14 +38,17 @@ target_keywords = [
     "law",
 ]
 
-print("Fetching active jobs...")
+print("Fetching active jobs via proxy...")
 
 try:
-    response = requests.get(url, headers=headers, timeout=15)
-    print(f"Website Response Status: {response.status_code}")
+    response = requests.get(proxy_url, headers=headers, timeout=20)
+    print(f"Proxy Response Status: {response.status_code}")
 
     if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "html.parser")
+        data = response.json()
+        html_content = data.get("contents", "")
+
+        soup = BeautifulSoup(html_content, "html.parser")
         links = soup.find_all("a")
 
         active_matched_jobs = []
@@ -100,7 +99,7 @@ try:
         else:
             print("No matching jobs found with current keywords.")
     else:
-        print(f"Failed to load page. Status code: {response.status_code}")
+        print(f"Failed to fetch through proxy. Status code: {response.status_code}")
 
 except Exception as e:
     print(f"An error occurred: {e}")
