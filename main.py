@@ -88,6 +88,7 @@ try:
                 "text": message,
                 "parse_mode": "Markdown",
                 "disable_web_page_preview": True,
+                print(payload)
             }
 
             tg_response = requests.post(telegram_url, json=payload)
