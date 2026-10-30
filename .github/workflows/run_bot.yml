@@ -2,8 +2,8 @@ name: Run Sarkari Job Bot
 
 on:
   schedule:
-    # Runs every day at 8:00 AM IST (2:30 UTC)
-    - cron: '30 2 * * *'
+    # Runs every 6 hours (4 times a day automatically)
+    - cron: '0 */6 * * *'
   workflow_dispatch: # Allows you to run it manually anytime you want
 
 jobs:
@@ -21,8 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install requests beautifulsoup4
-          pip install requests beautifulsoup4 cloudscraper
-          
+
       - name: Run script
         run: |
           python main.py
